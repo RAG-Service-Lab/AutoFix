@@ -5,7 +5,6 @@ from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessag
 from model_load import load_ollama, load_hf, use_endpoint
 from memory import get_by_session_id
 
-
 def make_chain(model, history): # 히스토리 관리하는 프롬프트 - 모델 - 응답 체인 구성
 
     instruction = """
@@ -53,4 +52,7 @@ def generate_chain(model_type, model_name, history=None, token=None):
     elif model_type == "endpoint":
         model = use_endpoint(model_name=model_name, token=token)
         chain = make_chain(model, history)
+    else:
+        raise ValueError("Unsupported model type")
+    
     return chain
