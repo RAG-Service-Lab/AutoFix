@@ -1,12 +1,13 @@
 
 def make_filter(filter: dict):
 
-    if any(list(filter.values())):
-        main_filter = filter.copy()
+    valid_items = {k: v for k, v in filter.items() if v != "None"}
+
+    if valid_items:
+        main_filter = valid_items.copy()
     else:
         main_filter = None
-
-    sub_filter = {k: {"$eq": "None"} for k in filter.keys()}
+    sub_filter = {k: "None" for k in filter.keys()}
 
     return main_filter, sub_filter
 
@@ -24,28 +25,25 @@ def rerank(model, query, documents, k):
 
     return reranked_docs
 
-def retrieval(query, vector_store, filter, reranker=None):
-    main_filter, sub_filter = make_filter(filter)
+def retrieval(query,  main_vector_store, sub_vector_store, reranker=None):
 
-    if main_filter:
-        main_docs = vector_store.similarity_search(query, k=10, filter=main_filter)
-        unique_main_docs = list({doc.page_content: doc for doc in main_docs}.values())
+    if main_vector_store is not None:
+        main_docs = main_vector_store.similarity_search_with_relevance_scores(query, k=10, score_threshold=0.4)
+        unique_main_docs = list({doc.page_content: doc for doc, score in main_docs}.values())
+      
         if reranker:
-            ranked_main_docs = rerank(reranker, query, unique_main_docs, k=1)
+            ranked_main_docs = rerank(reranker, query, unique_main_docs, k=3)
         else:
             ranked_main_docs = unique_main_docs
     else:
         ranked_main_docs = []
-    
-    sub_docs = vector_store.similarity_search(query, k=10, filter=sub_filter)
+
+    sub_docs = sub_vector_store.similarity_search(query, k=10)
     unique_sub_docs = list({doc.page_content: doc for doc in sub_docs}.values())
     if reranker:
-        ranked_sub_docs = rerank(reranker, query, unique_sub_docs, k=1)
+        ranked_sub_docs = rerank(reranker, query, unique_sub_docs, k=2)
     else:
         ranked_sub_docs = unique_sub_docs
-
-    print('검색된 문서: ')
-    print(ranked_sub_docs)
 
     all_docs = ranked_main_docs + ranked_sub_docs
 
