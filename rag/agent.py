@@ -18,7 +18,7 @@ def fallback_chat(query, model):
     return response
 
 
-def build_agent(model, vector_store, default_filter, history):
+def build_agent(model, main_vector_store, sub_vector_store, reranker, history):
 
     # instruction = """
     # 당신은 자동차 전문가 챗봇입니다. 질문에 답하기 위해 아래의 지시사항을 따르세요.
@@ -36,8 +36,13 @@ def build_agent(model, vector_store, default_filter, history):
     #     MessagesPlaceholder(variable_name='agent_scratchpad')
     # ])
 
-    prompt = PromptTemplate.from_template ('''Answer the following questions as best you can. You have access to the following tools:
-
+    prompt = PromptTemplate.from_template ('''
+    <|system|>
+    You are an automotive expert chatbot.
+    Do NOT use <think> or any reasoning markup.
+    Respond concisely in Korean following the ReAct format below.
+                                           
+    Answer the following questions as best you can. You have access to the following tools:
     {tools}
 
     Previous conversation history:
@@ -60,14 +65,14 @@ def build_agent(model, vector_store, default_filter, history):
     Question: {query}
     Thought:{agent_scratchpad}'''
     )
-
+    
     tools = []
     search = DuckDuckGoSearchRun()
     tools.append(
         Tool(
             name="web_search",
             func=search.run,
-            description="자동차 부품에 대해 무엇인지 물어보면 웹에서 검색하여 답변",
+            description="자동차 부품에 대한 정의를 물어보면 웹에서 검색하여 답변",
             return_direct=False
         )
     )
@@ -75,8 +80,8 @@ def build_agent(model, vector_store, default_filter, history):
     tools.append(
         Tool(
             name="document_retrieval",
-            func=lambda q: retrieval(q, vector_store, default_filter),
-            description="자동차 문제 관련 질문 시 검색된 컬 문서를 참고하여 답변",
+            func=lambda q: retrieval(q, main_vector_store, sub_vector_store, reranker),
+            description="자동차 고장, 문제 관련 질문이면 전문 지식이 담겨있는 문서에서 찾고 참고하여 답변",
             return_direct=False
         )
     )
@@ -87,9 +92,9 @@ def build_agent(model, vector_store, default_filter, history):
     agent_executor = AgentExecutor(
         agent=agent,
         tools=tools,
-        verbose=False,
-        max_iterations=30,
-        max_execution_time=60,
+        verbose=True,
+        max_iterations=10,
+        max_execution_time=240,
         handle_parsing_errors=True,
     )
 
@@ -103,7 +108,7 @@ def build_agent(model, vector_store, default_filter, history):
     return agent_with_history
 
 
-def generate_agent(model_type, model_name, vector_store, default_filter, history, token=None):
+def generate_agent(model_type, model_name, main_vector_store, sub_vector_store, reranker, history, token=None):
     if model_type == "ollama":
         model = load_ollama(model_name=model_name)
     elif model_type == "hf":
@@ -112,6 +117,6 @@ def generate_agent(model_type, model_name, vector_store, default_filter, history
         model = use_endpoint(model_name=model_name, token=token)
     else:
         raise ValueError("Unsupported model type")
-    agent = build_agent(model, vector_store, default_filter, history)
+    agent = build_agent(model, main_vector_store, sub_vector_store, reranker, history)
 
     return agent
