@@ -7,9 +7,9 @@ from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessagePromptTemplate
-from model_load import load_ollama, load_hf, use_endpoint
-from memory import get_by_session_id
-from retrieval import retrieval
+from rag.model_load import load_ollama, load_hf, use_endpoint
+from rag.memory import get_by_session_id
+from rag.retrieval import retrieval
 
 def fallback_chat(query, model):
     instruction = "사용자의 질문에 친절하고 자연스럽게 대화합니다."

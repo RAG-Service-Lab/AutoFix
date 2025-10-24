@@ -46,6 +46,8 @@ def load_hf(model_name, quantization=True): # 4bit 양자화 모델 로드
         )
         print('model loaded')
 
+    model.generation_config.enable_thinking = False
+
     qa_pipeline = pipeline(
         "text-generation",
         model=model,
